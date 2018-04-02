@@ -6,27 +6,32 @@ const net = require('net')
  * connections form the client
  * TCP server is duplex streamed: read and write on the same socket
  * Write is usually on the client. It can also read from the client
- * 
+ *
 */
 
 let server = net.createServer(function (socket) {
-  console.log(socket)
   // Whenever a client makes a request this message is posted
   console.log('Connection established 🦁')
-
+  server.getConnections(function (error, count) {
+    console.log('Number of established concurrent connections: ' + count)
+  })
   // Event handlers.'on' is similar to addEventListener
   socket.on('end', function () {
     console.log('Server disconnected... 🐤')
   })
   socket.on('data', function (data) { // readable stream
-    console.log('Data received ', data)
-    socket.write('Server reply ' + data) // writable stream
+    console.log('Data received from client: ', data)
+    socket.write('Server says: ' + data) // writable stream
   })
 })
 
-// console.log(net.createServer())
+// Resticts the maximum number of concurrent connections
+server.maxConnections = 1
 
-server.listen(9000, function () {
-  console.log('server is listening')
+/**
+ * Listen could also emit events
+ */
+server.listen(function () {
+  console.log('server is listening... 👂👂👂 on port ', server.address().port)
   console.log('server bound address is: ' + JSON.stringify(server.address()))
 })
