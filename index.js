@@ -12,9 +12,11 @@ const net = require('net')
 let server = net.createServer(function (socket) {
   // Whenever a client makes a request this message is posted
   console.log('Connection established 🦁')
-  server.getConnections(function (error, count) {
+
+  server.getConnections(function (count) {
     console.log('Number of established concurrent connections: ' + count)
   })
+
   // Event handlers.'on' is similar to addEventListener
   socket.on('end', function () {
     console.log('Server disconnected... 🐤')
@@ -22,6 +24,11 @@ let server = net.createServer(function (socket) {
   socket.on('data', function (data) { // readable stream
     console.log('Data received from client: ', data)
     socket.write('Server says: ' + data) // writable stream
+    // emit events
+    socket.emit('error', new Error('Forcefully injected 🐞 '))
+  })
+  socket.on('error', function (error) {
+    console.log(error + 'Something went wrong here...')
   })
 })
 
