@@ -32,3 +32,10 @@ HTTP and HTTPS URIs look almost the same. The difference is that when a client g
 
 There are many other URI schemes out there, though.
 
+### Hostname
+In an HTTP URI, the next thing that appears after the scheme is a hostname — something like www.google.com or localhost. This tells the client which server to connect to.
+
+Often web addresses are written as just a hostname in print. But in the HTML code of a web page, one can't write <a href="www.google.com">this</a> and get a working link to Google. A hostname can only appear after a URI scheme that supports it, such as http or https. In these URIs, there will always be a :// between the scheme and hostname.
+
+Not every URI has a hostname. For instance, a mailto URI just has an email address: mailto:spam@example.net is a well-formed mailto URI. This also reveals a bit more about the punctuation in URIs: the : goes after the scheme, but the // goes before the hostname. Mailto links don't have a hostname part, so they don't have a //.
+
