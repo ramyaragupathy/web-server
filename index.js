@@ -8,7 +8,7 @@ const net = require('net')
  * Write is usually on the client. It can also read from the client
  *
 */
-const requestHandler = (request, socket) => {
+const requestParser = (request, socket) => {
   let reqArr = request.toString().split('\r\n')
   let reqObj = {}
   let startLine = reqArr[0].split(' ')
@@ -42,7 +42,7 @@ let server = net.createServer(function (socket) {
     console.log('Server disconnected... 🐤')
   })
   socket.on('data', function (request) { // readable stream
-    let requestObj = requestHandler(request, socket)
+    let requestObj = requestParser(request, socket)
     console.log('requestObj: ',JSON.stringify(requestObj))
     console.log('Data received from client: ', request.toString())
     socket.write(`HTTP/1.1 200 OK \r\nContent-type: text/plain \r\n\r\n ${requestObj}`) // writable stream
