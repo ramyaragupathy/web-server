@@ -13,7 +13,7 @@ let server = net.createServer(function (socket) {
   // Whenever a client makes a request this message is posted
   console.log('Connection established 🦁')
 
-  server.getConnections(function (count) {
+  server.getConnections(function (error, count) {
     console.log('Number of established concurrent connections: ' + count)
   })
 
@@ -22,23 +22,20 @@ let server = net.createServer(function (socket) {
     console.log('Server disconnected... 🐤')
   })
   socket.on('data', function (data) { // readable stream
-    console.log('Data received from client: ', data)
-    socket.write('Server says: ' + data) // writable stream
-    // emit events
-    socket.emit('error', new Error('Forcefully injected 🐞 '))
+    console.log('Data received from client: ', data.toString())
+    socket.write(`HTTP/1.1 200 OK \r\nContent-type: text/plain \r\n\r\n ${data.toString()}`) // writable stream
+    socket.end()
   })
-  socket.on('error', function (error) {
-    console.log(error + 'Something went wrong here...')
-  })
+
 })
 
 // Resticts the maximum number of concurrent connections
-server.maxConnections = 1
+server.maxConnections = 2
 
 /**
  * Listen could also emit events
  */
-server.listen(function () {
+server.listen(8111, function () {
   console.log('server is listening... 👂👂👂 on port ', server.address().port)
   console.log('server bound address is: ' + JSON.stringify(server.address()))
 })
