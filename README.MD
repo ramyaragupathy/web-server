@@ -59,7 +59,14 @@ Requests are messages sent by the client to initiate an action on the server. It
 
 Their start-line contain three elements:
 
-1. HTTP method/verb - GET, POST, PUT, DELETE, HEAD, OPTIONS
+1. HTTP method/verb 
+    - GET data retrieval
+    - POST create new record
+    - PUT update existing data
+    - DELETE delete existing data
+    - HEAD for cache validation
+    - OPTIONS gives a lsit of methods that are allowed in the current URL
+
 2. target/path/resource
 3. HTTP version
 
