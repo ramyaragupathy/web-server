@@ -80,13 +80,13 @@ status-line is made up of:
 3. status text
 
 ### Status codes
-   Status code group | Category| Desc
-   -------------------|---------|------
-   1xx|Informational|Request is in progress or there's another step to take
-    2xx| Success| Request suceeded. Server is sending the data client asked for
-    3xx| Redirection| Server is telling the client a different URI it should redirect to. headers iwll usuallu contain a `location` header with the updated URI. Different codes tell whether redirection is permanent or temporary
-    4xx| Clinet error| Server didn't understand client's request or won't fulfill it
-    5xx|Server side error|
+Status code group | Category| Desc
+-------------------|---------|------
+1xx|Informational|Request is in progress or there's another step to take
+2xx| Success| Request suceeded. Server is sending the data client asked for
+3xx| Redirection| Server is telling the client a different URI it should redirect to. headers iwll usuallu contain a `location` header with the updated URI. Different codes tell whether redirection is permanent or temporary
+4xx| Clinet error| Server didn't understand client's request or won't fulfill it
+5xx|Server side error|
 
 ### Response Headers
 Headers contain additional data(metadata) about requests or responses. These are some of the important ones:
