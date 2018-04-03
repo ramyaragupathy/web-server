@@ -39,3 +39,12 @@ Often web addresses are written as just a hostname in print. But in the HTML cod
 
 Not every URI has a hostname. For instance, a mailto URI just has an email address: mailto:spam@example.net is a well-formed mailto URI. This also reveals a bit more about the punctuation in URIs: the : goes after the scheme, but the // goes before the hostname. Mailto links don't have a hostname part, so they don't have a //.
 
+### Path
+In an HTTP URI (and many others), the next thing that appears is the path, which identifies a particular resource on a server. A server can have many resources on it — such as different web pages, videos, or APIs. The path tells the server which resource the client is looking for.
+
+In the real world, URI paths don't necessarily equate to specific filenames. For instance, if you do a Google search, you'll see a URI path such as /search?q=ponies. This doesn't mean that there's literally a file on a server at Google with a filename of search?q=ponies. The server interprets the path to figure out what resource to send. In the case of a search query, it sends back a search result page that maybe never existed before.
+
+When you write a URI without a path, such as http://mysite.com, the browser fills in the default path, which is written with a single slash. That's why http://mysite.com is the same as http://mysite.com/ (with a slash on the end).
+
+The path written with just a single slash is also called the **root**. When you look at the root URI of a local server — http://localhost:8000/ — you're not looking at the root of your computer's whole filesystem. It's just the root of the resources served by the web server. The demo server won't let a web browser access files outside the directory that it's running in.
+
