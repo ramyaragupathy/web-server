@@ -2,6 +2,12 @@ An HTTP transaction always involves a client and a server. A web browser is an e
 
 HTTP was originally created to serve hypertext documents, but today is used for much more. As a user of the web, you're using HTTP all the time.
 
+- [Servers]()
+- [Requests]()
+- [Response]()
+    - [Status codes]()
+- [Cookies]()
+
 ## What's a server ?
 A server is just a program that accepts connections from other programs on the network.
 
