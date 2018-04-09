@@ -29,34 +29,38 @@ const requestParser = (request, socket) => {
   return reqObj
 }
 
-let server = net.createServer(function (socket) {
-  // Whenever a client makes a request this message is posted
-  console.log('Connection established 🦁')
+const createServer = (port) => {
+  let server = net.createServer(function (socket) {
+    // Whenever a client makes a request this message is posted
+    console.log('Connection established 🦁')
 
-  server.getConnections(function (error, count) {
-    console.log('Number of established concurrent connections: ' + count)
+    server.getConnections(function (error, count) {
+      console.log('Number of established concurrent connections: ' + count)
+    })
+
+    // Event handlers.'on' is similar to addEventListener
+    socket.on('end', function () {
+      console.log('Server disconnected... 🐤')
+    })
+    socket.on('data', function (request) { // readable stream
+      let requestObj = requestParser(request, socket)
+      console.log('requestObj: ', JSON.stringify(requestObj))
+      console.log('Data received from client: ', request.toString())
+      socket.write(`HTTP/1.1 200 OK \r\nContent-type: text/plain \r\n\r\n ${requestObj}`) // writable stream
+      socket.end()
+    })
   })
 
-  // Event handlers.'on' is similar to addEventListener
-  socket.on('end', function () {
-    console.log('Server disconnected... 🐤')
-  })
-  socket.on('data', function (request) { // readable stream
-    let requestObj = requestParser(request, socket)
-    console.log('requestObj: ',JSON.stringify(requestObj))
-    console.log('Data received from client: ', request.toString())
-    socket.write(`HTTP/1.1 200 OK \r\nContent-type: text/plain \r\n\r\n ${requestObj}`) // writable stream
-    socket.end()
-  })
-})
+  // Resticts the maximum number of concurrent connections
+  server.maxConnections = 2
 
-// Resticts the maximum number of concurrent connections
-server.maxConnections = 2
+  /**
+   * Listen could also emit events
+   */
+  server.listen(port, function () {
+    console.log('server is listening... 👂👂👂 on port ', server.address().port)
+    console.log('server bound address is: ' + JSON.stringify(server.address()))
+  })
+}
 
-/**
- * Listen could also emit events
- */
-server.listen(8111, function () {
-  console.log('server is listening... 👂👂👂 on port ', server.address().port)
-  console.log('server bound address is: ' + JSON.stringify(server.address()))
-})
+module.exports = {createServer}
