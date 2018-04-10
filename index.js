@@ -55,10 +55,10 @@ const createServer = (port) => {
       let responseObj = new Response()
       console.log('Response: ', responseObj)
       responseObj.headers['Content-type'] = 'text/plain'
-      //responseObj['body'] = JSON.stringify(requestObj)
+      // responseObj['body'] = JSON.stringify(requestObj)
       let responseStr = responseObj.version + ' ' + responseObj.statusCode + ' ' +
                     responseObj.statusMessage + ' \r\n' + responseObj.headers['Content-type'] +
-                    '\r\n\r\n' 
+                    '\r\n\r\n'
       socket.write(responseStr)
       // socket.write(`HTTP/1.1 200 OK \r\nContent-type: text/plain \r\n\r\n ${JSON.stringify(requestObj)}`) // writable stream
       socket.end()
@@ -81,11 +81,17 @@ const statusInfo = {
   404: 'Not Found'
 }
 
-function Response () {
-  this.version = 'HTTP/1.1'
-  this.statusCode = 200
-  this.statusMessage = statusInfo[this.statusCode]
-  this.headers = {}
+class Response {
+  constructor () {
+    this.version = 'HTTP/1.1'
+    this.statusCode = 200
+    this.statusMessage = statusInfo[this.statusCode]
+    this.headers = {}
+  }
+  setStatus (code) {
+    this.statusCode = 200
+    this.statusMessage = statusInfo[code]
+  }
 }
 
 const addRoutes = (method, path, callback) => {
