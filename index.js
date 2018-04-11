@@ -1,14 +1,6 @@
 const net = require('net')
+const routes = {'GET': {}, 'POST': {}}
 
-const routes = {'GET': {}}
-/**
- * Creates a TCP server; It is an async model
- * Callback here is a connection listener that listens for any
- * connections form the client
- * TCP server is duplex streamed: read and write on the same socket
- * Write is usually on the client. It can also read from the client
- *
-*/
 const requestParser = (request, socket) => {
   let reqArr = request.toString().split('\r\n')
   let reqObj = {}
@@ -31,6 +23,14 @@ const requestParser = (request, socket) => {
 }
 
 const createServer = (port) => {
+  /**
+   * Creates a TCP server; It is an async model
+   * Callback here is a connection listener that listens for any
+   * connections form the client
+   * TCP server is duplex streamed: read and write on the same socket
+   * Write is usually on the client. It can also read from the client
+   *
+   */
   let server = net.createServer(function (socket) {
     // Whenever a client makes a request this message is posted
     console.log('Connection established 🦁')
@@ -40,29 +40,58 @@ const createServer = (port) => {
     })
 
     // Event handlers.'on' is similar to addEventListener
-    socket.on('end', function () {
-      console.log('Server disconnected... 🐤')
-    })
-    socket.on('data', function (request) { // readable stream
-      let requestObj = requestParser(request, socket)
-      // console.log('requestObj: ', JSON.stringify(requestObj))
-      // console.log('Data received from client: ', request.toString())
-      if (routes[requestObj.method].hasOwnProperty(requestObj.path)) {
-        routes[requestObj.method][requestObj.path](requestObj, new Response())
-      } else {
-        // 404 err
+    // socket.on('end', function () {
+    //   console.log('Server disconnected... 🐤')
+    // })
+
+    let requestBuffer = Buffer.from([])
+    let bodyBuffer = Buffer.from([])
+    let receivedPart = false
+    let obj = {}
+    socket.on('data', (data) => { // stream of data
+      if (receivedPart) {
+        bodyBuffer = Buffer.concat([bodyBuffer, data], bodyBuffer.length + data.length)
       }
-      let responseObj = new Response()
-      console.log('Response: ', responseObj)
-      responseObj.headers['Content-type'] = 'text/plain'
-      // responseObj['body'] = JSON.stringify(requestObj)
-      let responseStr = responseObj.version + ' ' + responseObj.statusCode + ' ' +
-                    responseObj.statusMessage + ' \r\n' + responseObj.headers['Content-type'] +
-                    '\r\n\r\n'
-      socket.write(responseStr)
-      // socket.write(`HTTP/1.1 200 OK \r\nContent-type: text/plain \r\n\r\n ${JSON.stringify(requestObj)}`) // writable stream
-      socket.end()
+      requestBuffer = Buffer.concat([requestBuffer, data], requestBuffer.length + data.length)
+      if (requestBuffer.includes('\r\n\r\n')) {
+        if (!receivedPart) {
+          let [header, body] = getHeaderAndBody(requestBuffer)
+          socket.write('HTTP/1.1 200 OK \r\nContent-type: text/plain \r\n\r\n Hello world!')
+          // obj = parseRequest(header.toString())
+          bodyBuffer = Buffer.from(body)
+          receivedPart = true
+        }
+        if (obj.Headers['Content-Length'] === undefined || parseInt(obj.Headers['Content-Length']) !== bodyBuffer.length) {
+          //handleRequest(obj, socket, bodyBuffer)
+          requestBuffer = Buffer.from([])
+          bodyBuffer = Buffer.from([])
+          receivedPart = false
+          obj = {}
+        }
+      }
     })
+    // let reqArr = []
+    // socket.on('data', function (request) { // readable stream
+
+    // let requestObj = requestParser(request, socket)
+    // // console.log('requestObj: ', JSON.stringify(requestObj))
+    // // console.log('Data received from client: ', request.toString())
+    // if (routes[requestObj.method].hasOwnProperty(requestObj.path)) {
+    //   routes[requestObj.method][requestObj.path](requestObj, new Response())
+    // } else {
+    //   // 404 err
+    // }
+    // let responseObj = new Response()
+    // console.log('Response: ', responseObj)
+    // responseObj.headers['Content-type'] = 'text/plain'
+    // // responseObj['body'] = JSON.stringify(requestObj)
+    // let responseStr = responseObj.version + ' ' + responseObj.statusCode + ' ' +
+    //               responseObj.statusMessage + ' \r\n' + responseObj.headers['Content-type'] +
+    //               '\r\n\r\n'
+    // socket.write(responseStr)
+    // socket.write(`HTTP/1.1 200 OK \r\nContent-type: text/plain \r\n\r\n ${JSON.stringify(requestObj)}`) // writable stream
+    // socket.end()
+    // })
   })
 
   // Resticts the maximum number of concurrent connections
@@ -78,7 +107,14 @@ const createServer = (port) => {
 }
 const statusInfo = {
   200: 'OK',
-  404: 'Not Found'
+  404: 'Not Found',
+  301: 'Moved Permanently'
+}
+
+function getHeaderAndBody (reqBuff) {
+  let header = reqBuff.slice(0, reqBuff.indexOf('\r\n\r\n'))
+  let body = reqBuff.slice(reqBuff.indexOf('\r\n\r\n') + 4)
+  return [header, body]
 }
 
 class Response {
@@ -91,6 +127,9 @@ class Response {
   setStatus (code) {
     this.statusCode = 200
     this.statusMessage = statusInfo[code]
+  }
+  send () {
+    this.socket.write()
   }
 }
 
