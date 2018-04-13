@@ -6,42 +6,27 @@ function createWebServer (requestHandler) {
   server.on('connection', handleConnection)
 
   function handleConnection (socket) {
-    // Subscribe to the readable event once so we can start calling .read()
-    socket.once('readable', function () {
-      // Set up a buffer to hold the incoming data
-      let reqBuffer = new Buffer('')
+    // Set up a temporary buffer to read in chunks
+    let reqBuffer = new Buffer('')
+    socket.on('data', function (chunk) {
       console.log('request Buffer: ', reqBuffer)
-      // Set up a temporary buffer to read in chunks
-      let buf
-      let reqHeader
-      while (true) {
-        // Read data from the socket
-        buf = socket.read()
-        console.log('Buffer: ', buf)
-        // Stop if there's no more data
-        if (buf === null) break
+      let reqHeader, body
+      // Concatenate existing request buffer with new data
+      reqBuffer = Buffer.concat([reqBuffer, chunk])
 
-        // Concatenate existing request buffer with new data
-        reqBuffer = Buffer.concat([reqBuffer, buf])
-
-        // Check if we've reached \r\n\r\n, indicating end of header
-        let marker = reqBuffer.indexOf('\r\n\r\n')
+      // Check if we've reached \r\n\r\n, indicating end of header
+      let marker = reqBuffer.indexOf('\r\n\r\n')
+      if (marker >= 0) {
+        console.log('received complete')
+        console.log('Complete: ', reqBuffer.toString())
         console.log('end of header: ', marker)
-        if (marker !== -1) {
-          // If we reached \r\n\r\n, there could be data after it. Take note.
-          let remaining = reqBuffer.slice(marker + 4)
-          // The header is everything we read, up to and not including \r\n\r\n
-          reqHeader = reqBuffer.slice(0, marker).toString()
-          // This pushes the extra data we read back to the socket's readable stream
-          // console.log('remaining: ', remaining.toString())
-          // console.log('Socket before: ', socket.length)
-          // console.log('Socket before: ', socket)
-
-          socket.unshift(remaining)
-          // console.log('Socket after: ', socket)
-          // console.log('Socket after: ', socket.length)
-          break
-        }
+        // If we reached \r\n\r\n, remaining data is the body
+        body = reqBuffer.slice(marker + 4)
+        // The header is everything we read, up to and not including \r\n\r\n
+        reqHeader = reqBuffer.slice(0, marker).toString()
+        console.log('remaining body: ', body.toString())
+      } else if (marker === -1) {
+        handleConnection(socket)
       }
 
       /* Request-related */
@@ -49,35 +34,38 @@ function createWebServer (requestHandler) {
       const reqHeaders = reqHeader.split('\r\n')
       // First line is special
       const reqLine = reqHeaders.shift().split(' ')
-      // Further lines are one header per line, build an object out of it.
-      const headers = reqHeaders.reduce((acc, currentHeader) => {
-        const [key, value] = currentHeader.split(':')
-        return {
-          ...acc,
-          [key.trim().toLowerCase()]: value.trim()
-        }
-      }, {})
-      // This object will be sent to the handleRequest callback.
       const request = {
         method: reqLine[0],
         url: reqLine[1],
-        httpVersion: reqLine[2].split('/')[1],
-        headers,
-        // The user of this web server can directly read from the socket to get the request body
-        socket
+        httpVersion: reqLine[2].split('/')[1]
       }
+      // reqHeaders is one header per line, build an object out of it
+      reqHeaders.forEach((ele, eleIndex) => {
+        if (ele !== '') {
+          let colonSeparator = ele.indexOf(':')
+          let header = ele.slice(0, colonSeparator)
+          let headerText = ele.slice(colonSeparator + 1)
+          request[header] = headerText
+        }
+      })
+      request.body = body.toString()
+
+      // This object will be sent to the handleRequest callback.
+      console.log('Request: ', request)
 
       /* Response-related */
       // Initial values
-      let status = 200, statusText = 'OK', headersSent = false, isChunked = false
+      let status = 200
+      let statusText = 'OK'
+      let headersSent = false
+      let isChunked = false
       const responseHeaders = {
-        server: 'my-custom-server'
+        server: 'my-web-server'
       }
       function setHeader (key, value) {
         responseHeaders[key.toLowerCase()] = value
       }
       function sendHeaders () {
-        // Only do this once :)
         if (!headersSent) {
           headersSent = true
           // Add the date header
@@ -103,7 +91,7 @@ function createWebServer (requestHandler) {
             sendHeaders()
           }
           if (isChunked) {
-            const size = chunk.length.toString(16)
+            const size = chunk.length.toString()
             socket.write(`${size}\r\n`)
             socket.write(chunk)
             socket.write('\r\n')
@@ -113,7 +101,6 @@ function createWebServer (requestHandler) {
         },
         end (chunk) {
           if (!headersSent) {
-            // We know the full length of the response, let's set it
             if (!responseHeaders['content-length']) {
               // Assume that chunk is a buffer, not a string!
               setHeader('content-length', chunk ? chunk.length : 0)
@@ -136,22 +123,18 @@ function createWebServer (requestHandler) {
         setStatus (newStatus, newStatusText) {
           status = newStatus,
           statusText = newStatusText
-        },
-        // Convenience method to send JSON through server
-        json (data) {
-          if (headersSent) {
-            throw new Error('Headers sent, cannot proceed to send JSON')
-          }
-          const json = new Buffer(JSON.stringify(data))
-          setHeader('content-type', 'application/json; charset=utf-8')
-          setHeader('content-length', json.length)
-          sendHeaders()
-          socket.end(json)
         }
       }
 
-      // Send the request to the handler!
+      // Send the request & response to the handler
       requestHandler(request, response)
+      if (routes[request.method][request.url]) {
+        console.log('Request: ', request)
+        routes[request.method][request.url](request, response)
+      } else {
+        response.setStatus(400, 'Page not Found')
+        response.end('Page not Found')
+      }
     })
   }
 
@@ -165,7 +148,6 @@ const addRoutes = (method, path, callback) => {
 }
 
 const webServer = createWebServer((req, res) => {
-  // This is the similar to the http module
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`)
   addRoutes('GET', '/', (req, res) => {
     res.setHeader('Content-Type', 'text/html')
@@ -174,18 +156,22 @@ const webServer = createWebServer((req, res) => {
   <title>Login Page</title>
   </head>
   <body>
-      <form action="login/">
+      <form action="/login" method="post">
           First name:<br>
-          <input type="text" id="firstname" ><br>
+          <input type="text" name="firstname" ><br>
           Last name:<br>
-          <input type="text" id="lastname" ><br><br>
-          <input type="submit" value=".....Submit">
+          <input type="text" name="lastname" ><br><br>
+          <input type="submit" value="Submit">
         </form>
   </body>
   </html>`)
   })
+  addRoutes('POST', '/login', (req, res) => {
+    res.setHeader('Content-Type', 'text/plain')
+    res.write(`Welcome`)
+    res.end()
+  })
   console.log(routes)
-  routes['GET']['/'](req, res)
 })
 
 webServer.listen(3000)
