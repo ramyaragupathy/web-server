@@ -1,4 +1,5 @@
 const net = require('net')
+const routes = {'GET': {}, 'POST': {}}
 
 function createWebServer (requestHandler) {
   const server = net.createServer()
@@ -32,13 +33,13 @@ function createWebServer (requestHandler) {
           // The header is everything we read, up to and not including \r\n\r\n
           reqHeader = reqBuffer.slice(0, marker).toString()
           // This pushes the extra data we read back to the socket's readable stream
-          console.log('remaining: ', remaining.toString())
-          console.log('Socket before: ', socket.length)
-          console.log('Socket before: ', socket)
+          // console.log('remaining: ', remaining.toString())
+          // console.log('Socket before: ', socket.length)
+          // console.log('Socket before: ', socket)
 
           socket.unshift(remaining)
-          console.log('Socket after: ', socket)
-          console.log('Socket after: ', socket.length)
+          // console.log('Socket after: ', socket)
+          // console.log('Socket after: ', socket.length)
           break
         }
       }
@@ -66,7 +67,7 @@ function createWebServer (requestHandler) {
         socket
       }
 
-      /* Response-related business */
+      /* Response-related */
       // Initial values
       let status = 200, statusText = 'OK', headersSent = false, isChunked = false
       const responseHeaders = {
@@ -132,7 +133,10 @@ function createWebServer (requestHandler) {
           }
         },
         setHeader,
-        setStatus (newStatus, newStatusText) { status = newStatus, statusText = newStatusText },
+        setStatus (newStatus, newStatusText) {
+          status = newStatus,
+          statusText = newStatusText
+        },
         // Convenience method to send JSON through server
         json (data) {
           if (headersSent) {
@@ -156,11 +160,32 @@ function createWebServer (requestHandler) {
   }
 }
 
+const addRoutes = (method, path, callback) => {
+  routes[method][path] = callback
+}
+
 const webServer = createWebServer((req, res) => {
-  // This is the as our original code with the http module :)
+  // This is the similar to the http module
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`)
-  res.setHeader('Content-Type', 'text/plain')
-  res.end('This is another response!')
+  addRoutes('GET', '/', (req, res) => {
+    res.setHeader('Content-Type', 'text/html')
+    res.end(`<html>
+  <head>
+  <title>Login Page</title>
+  </head>
+  <body>
+      <form action="login/">
+          First name:<br>
+          <input type="text" id="firstname" ><br>
+          Last name:<br>
+          <input type="text" id="lastname" ><br><br>
+          <input type="submit" value=".....Submit">
+        </form>
+  </body>
+  </html>`)
+  })
+  console.log(routes)
+  routes['GET']['/'](req, res)
 })
 
 webServer.listen(3000)
