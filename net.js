@@ -109,7 +109,8 @@ function createWebServer (requestHandler) {
           }
           if (isChunked) {
             if (chunk) {
-              const size = (chunk.length).toString(16)
+              const size = (chunk.length).toString()
+
               socket.write(`${size}\r\n`)
               socket.write(chunk)
               socket.write('\r\n')
@@ -121,7 +122,7 @@ function createWebServer (requestHandler) {
         },
         setHeader,
         setStatus (newStatus, newStatusText) {
-          status = newStatus,
+          status = newStatus
           statusText = newStatusText
         }
       }
@@ -168,8 +169,7 @@ const webServer = createWebServer((req, res) => {
   })
   addRoutes('POST', '/login', (req, res) => {
     res.setHeader('Content-Type', 'text/plain')
-    res.write(`Welcome`)
-    res.end()
+    res.end(`Welcome`)
   })
   console.log(routes)
 })
