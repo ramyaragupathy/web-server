@@ -197,7 +197,19 @@ function staticFileHandler (directory) {
   })
 }
 
+function bodyParser(req, res, next){
+  if (req.headers['Content-Type'] === ' application/x-www-form-urlencoded') {
+    let values = req.body.toString().split('&')
+    let parsedBody = {}
+    values.forEach((element) => {
+      parsedBody[element.split('=')[0]] = element.split('=')[1].replace('+', ' ')
+    })
+    req.body = parsedBody
+  }
+  next(req, res)
+}
 
+}
 const webServer = createWebServer((req, res) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`)
   addRoutes('GET', '/', (req, res) => {
