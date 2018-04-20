@@ -2,7 +2,7 @@ const net = require('net')
 const fs = require('fs')
 const path = require('path')
 const routes = {'GET': {}, 'POST': {}}
-
+const handlers = []
 
 function createWebServer (requestHandler) {
   const server = net.createServer()
@@ -10,7 +10,7 @@ function createWebServer (requestHandler) {
 
   function handleConnection (socket) {
     // Set up a temporary buffer to read in chunks
-    let reqBuffer = new Buffer('')
+    let reqBuffer = Buffer.from('')
     socket.on('data', function (chunk) {
       console.log('request Buffer: ', reqBuffer)
       let reqHeader, body
@@ -132,6 +132,7 @@ function createWebServer (requestHandler) {
 
       // Send the request & response to the handler
       requestHandler(request, response)
+      
       if (routes[request.method][request.url]) {
         console.log('Request: ', request)
         routes[request.method][request.url](request, response)
@@ -144,15 +145,47 @@ function createWebServer (requestHandler) {
 
   return {
     listen: (port) => server.listen(port)
+
   }
 }
 
-const addRoutes = (method, path, callback) => {
-  routes[method][path] = callback
+function next (req, res) {
+  let handler = handlers.shift()
+  console.log('HANDLER: ', handler)
+  handler(req, res)
 }
 
-function staticFileHandler (directory) {
-  var filePath = '.' + request.url
+function addHandler (handler) {
+  handlers.push(handler)
+}
+
+function methodHandler (req, res, next) {
+  if (routes[req.method].hasOwnProperty(req.url)) {
+    routes[req.method][req.url](req, res)
+  } else {
+    res.setStatus(404)
+    fs.readFile('./server/404.html', (err, data) => {
+      if (err) throw err
+      res.body = data
+      res.send()
+    })
+  }
+}
+
+function bodyParser (req, res, next) {
+  if (req.headers['Content-Type'] === ' application/x-www-form-urlencoded') {
+    let values = req.body.toString().split('&')
+    let parsedBody = {}
+    values.forEach((element) => {
+      parsedBody[element.split('=')[0]] = element.split('=')[1].replace('+', ' ')
+    })
+    req.body = parsedBody
+  }
+  next(req, res)
+}
+
+function staticFileHandler (directory, req, res) {
+  var filePath = '.' + req.url
   if (filePath === './') { filePath = './index.html' }
 
   var extname = path.extname(filePath)
@@ -182,34 +215,25 @@ function staticFileHandler (directory) {
     if (error) {
       if (error.code === 'ENOENT') {
         fs.readFile('./404.html', function (error, content) {
-          response.writeHead(200, { 'Content-Type': contentType })
-          response.end(content, 'utf-8')
+          res.setStatus(200, { 'Content-Type': contentType })
+          res.end(content, 'utf-8')
         })
       } else {
-        response.writeHead(500)
+        response.setStatus(500)
         response.end('Sorry, check with the site admin for error: ' + error.code + ' ..\n')
         response.end()
       }
     } else {
-      response.writeHead(200, { 'Content-Type': contentType })
-      response.end(content, 'utf-8')
+      res.setStatus(200, { 'Content-Type': contentType })
+      res.end(content, 'utf-8')
     }
   })
 }
 
-function bodyParser(req, res, next){
-  if (req.headers['Content-Type'] === ' application/x-www-form-urlencoded') {
-    let values = req.body.toString().split('&')
-    let parsedBody = {}
-    values.forEach((element) => {
-      parsedBody[element.split('=')[0]] = element.split('=')[1].replace('+', ' ')
-    })
-    req.body = parsedBody
-  }
-  next(req, res)
+const addRoutes = (method, path, callback) => {
+  routes[method][path] = callback
 }
 
-}
 const webServer = createWebServer((req, res) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`)
   addRoutes('GET', '/', (req, res) => {
@@ -234,11 +258,13 @@ const webServer = createWebServer((req, res) => {
     res.end(`Welcome`)
   })
   console.log(routes)
+  addHandler((req, res) => {
+    next(req, res)
+  })
+  console.log('AFTER NEXT: ', handlers)
+  addHandler(staticFileHandler('./test', req, res))
+  console.log('AFTER STATICFILE: ', handlers)
+  next(req, res)
 })
 
 webServer.listen(3000)
-webServer.addHandler((req, res, next) => {
-  next(req, res)
-})
-webServer.addHandler(staticFileHandler('./test'))
-
