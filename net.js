@@ -132,7 +132,7 @@ function createWebServer (requestHandler) {
 
       // Send the request & response to the handler
       requestHandler(request, response)
-      
+
       if (routes[request.method][request.url]) {
         console.log('Request: ', request)
         routes[request.method][request.url](request, response)
@@ -150,26 +150,16 @@ function createWebServer (requestHandler) {
 }
 
 function next (req, res) {
-  let handler = handlers.shift()
-  console.log('HANDLER: ', handler)
-  handler(req, res)
+  if (handlers.length) {
+    let handler = handlers.shift()
+    console.log('HANDLER: ', handler)
+    console.log('Handler response: ', res)
+    handler(req, res)
+  }
 }
 
 function addHandler (handler) {
   handlers.push(handler)
-}
-
-function methodHandler (req, res, next) {
-  if (routes[req.method].hasOwnProperty(req.url)) {
-    routes[req.method][req.url](req, res)
-  } else {
-    res.setStatus(404)
-    fs.readFile('./server/404.html', (err, data) => {
-      if (err) throw err
-      res.body = data
-      res.send()
-    })
-  }
 }
 
 function bodyParser (req, res, next) {
@@ -185,49 +175,53 @@ function bodyParser (req, res, next) {
 }
 
 function staticFileHandler (directory, req, res) {
-  var filePath = '.' + req.url
-  if (filePath === './') { filePath = './index.html' }
-
-  var extname = path.extname(filePath)
-  var contentType = 'text/html'
-  switch (extname) {
-    case '.js':
-      contentType = 'text/javascript'
-      break
-    case '.css':
-      contentType = 'text/css'
-      break
-    case '.json':
-      contentType = 'application/json'
-      break
-    case '.png':
-      contentType = 'image/png'
-      break
-    case '.jpg':
-      contentType = 'image/jpg'
-      break
-    case '.wav':
-      contentType = 'audio/wav'
-      break
-  }
-
-  fs.readFile(filePath, function (error, content) {
-    if (error) {
-      if (error.code === 'ENOENT') {
-        fs.readFile('./404.html', function (error, content) {
-          res.setStatus(200, { 'Content-Type': contentType })
-          res.end(content, 'utf-8')
-        })
-      } else {
-        response.setStatus(500)
-        response.end('Sorry, check with the site admin for error: ' + error.code + ' ..\n')
-        response.end()
-      }
-    } else {
-      res.setStatus(200, { 'Content-Type': contentType })
-      res.end(content, 'utf-8')
+  console.log('static file handler response: ', res)
+  return (req, res, directory) => {
+    var filePath = '.' + directory + req.url
+    console.log('request url: ', req.url)
+    console.log('FilePath: ', filePath)
+    console.log('static File Handler within next(): ', res)
+    if (filePath === './') { filePath = './index.html' }
+    console.log('FilePath: ', filePath)
+    var extname = path.extname(filePath)
+    var contentType = 'text/html'
+    switch (extname) {
+      case '.js':
+        contentType = 'text/javascript'
+        break
+      case '.css':
+        contentType = 'text/css'
+        break
+      case '.json':
+        contentType = 'application/json'
+        break
+      case '.png':
+        contentType = 'image/png'
+        break
+      case '.jpg':
+        contentType = 'image/jpg'
+        break
+      case '.wav':
+        contentType = 'audio/wav'
+        break
     }
-  })
+
+    fs.readFile(filePath, function (error, content) {
+      if (error) {
+        if (error.code === 'ENOENT') {
+          fs.readFile('./404.html', function (content) {
+            res.setStatus(404, 'Page not Found')
+            res.setHeader('Content-Type', contentType)
+            res.end(content, 'utf-8')
+          })
+        }
+      } else {
+        res.setStatus(200, 'OK')
+        res.setHeader('Content-Type', contentType)
+        res.end(content)
+      }
+    })
+  }
 }
 
 const addRoutes = (method, path, callback) => {
@@ -236,6 +230,13 @@ const addRoutes = (method, path, callback) => {
 
 const webServer = createWebServer((req, res) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`)
+  console.log(routes)
+  addHandler((req, res) => {
+    next(req, res)
+  })
+  console.log('AFTER NEXT: ', handlers)
+  addHandler(staticFileHandler(req, res, ''))
+  console.log('AFTER STATICFILE: ', handlers)
   addRoutes('GET', '/', (req, res) => {
     res.setHeader('Content-Type', 'text/html')
     res.end(`<html>
@@ -257,13 +258,7 @@ const webServer = createWebServer((req, res) => {
     res.setHeader('Content-Type', 'text/plain')
     res.end(`Welcome`)
   })
-  console.log(routes)
-  addHandler((req, res) => {
-    next(req, res)
-  })
-  console.log('AFTER NEXT: ', handlers)
-  addHandler(staticFileHandler('./test', req, res))
-  console.log('AFTER STATICFILE: ', handlers)
+  
   next(req, res)
 })
 
